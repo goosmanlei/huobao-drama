@@ -99,4 +99,9 @@ db.update(schema.sysTask)
   })
   .catch(err => console.error('清理中断任务失败:', err?.message))
 
-serve({ fetch: app.fetch, port })
+serve({ fetch: app.fetch, port, hostname: '127.0.0.1' })
+const lanHost = process.env.HUOBAO_LAN_HOST
+if (lanHost && lanHost !== '127.0.0.1') {
+  serve({ fetch: app.fetch, port, hostname: lanHost })
+  console.log(`🚀 Huobao Drama LAN server on http://${lanHost}:${port}`)
+}

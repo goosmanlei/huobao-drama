@@ -161,7 +161,7 @@
                 <div class="config-main">
                   <div class="config-line">
                     <span class="config-name">{{ c.name || `${c.provider}-${c.service_type}` }}</span>
-                    <span :class="['tag', c.api_key ? 'tag-success' : 'tag-error']">{{ c.api_key ? t('settings.ai.hasKey') : t('settings.ai.noKey') }}</span>
+                    <span :class="['tag', c.has_api_key ? 'tag-success' : 'tag-error']">{{ c.has_api_key ? t('settings.ai.hasKey') : t('settings.ai.noKey') }}</span>
                     <span v-if="!c.is_active" class="tag">{{ t('settings.common.disabled') }}</span>
                   </div>
                   <div class="config-models">
@@ -517,7 +517,7 @@
             <input v-model.number="cfgForm.priority" class="input" type="number" min="0" max="999" />
             <span class="field-hint">{{ t('settings.cfg.priorityHint') }}</span>
           </label>
-          <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input" type="password" placeholder="sk-..." /></label>
+          <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input" type="password" :placeholder="cfgHasKey ? t('settings.cfg.keepKeyPlaceholder') : 'sk-...'" autocomplete="new-password" /></label>
           <label class="field"><span class="field-label">Base URL</span><input v-model="cfgForm.base_url" class="input" placeholder="https://..." /></label>
           <div class="field">
             <span class="field-label">{{ t('settings.cfg.models') }}</span>
@@ -714,6 +714,7 @@ const baseTabs = computed(() => [
 const cfgs = ref([])
 const cfgDialog = ref(false)
 const cfgEditId = ref(null)
+const cfgHasKey = ref(false)
 const cfgTesting = ref(false)
 const cfgTestResult = ref(null)
 const huobaoApiKey = ref('')
@@ -859,6 +860,7 @@ async function applyHuobaoQuickConfig() {
 }
 function startAddCfg(t) {
   cfgEditId.value = null
+  cfgHasKey.value = false
   cfgTestResult.value = null
   Object.assign(cfgForm, { name: '', provider: '', api_key: '', base_url: '', models: [], service_type: t, priority: 0, temperature: '' })
   const firstPreset = presetsByType(t)[0]
@@ -867,11 +869,12 @@ function startAddCfg(t) {
 }
 function startEditCfg(c) {
   cfgEditId.value = c.id
+  cfgHasKey.value = Boolean(c.has_api_key)
   cfgTestResult.value = null
   Object.assign(cfgForm, {
     name: c.name || '',
     provider: c.provider,
-    api_key: c.api_key || '',
+    api_key: '',
     base_url: c.base_url || '',
     models: Array.isArray(c.model) ? [...c.model] : String(c.model || '').split(',').map(s => s.trim()).filter(Boolean),
     service_type: c.service_type,
@@ -894,6 +897,7 @@ async function testCfgPayload(payload) {
 }
 async function testDraftCfg() {
   await testCfgPayload({
+    config_id: cfgEditId.value,
     service_type: cfgForm.service_type,
     provider: cfgForm.provider,
     api_key: cfgForm.api_key,
@@ -904,9 +908,9 @@ async function testDraftCfg() {
 async function testExistingCfg(c) {
   startEditCfg(c)
   await testCfgPayload({
+    config_id: c.id,
     service_type: c.service_type,
     provider: c.provider,
-    api_key: c.api_key || '',
     base_url: c.base_url || '',
     model: Array.isArray(c.model) ? c.model : [],
   })

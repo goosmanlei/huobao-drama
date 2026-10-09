@@ -19,8 +19,10 @@ function normalizeTemperature(v: any): number | null {
 
 /** 把 settings JSON 中的 temperature 透出为顶层字段，便于前端直接读写 */
 function withParsedFields(r: any) {
+  const { apiKey, ...publicFields } = r
   return {
-    ...toSnakeCase(r),
+    ...toSnakeCase(publicFields),
+    has_api_key: Boolean(apiKey),
     model: r.model ? JSON.parse(r.model) : [],
     temperature: parseConfigTemperature(r.settings),
   }
@@ -77,10 +79,10 @@ function buildProbe(serviceType: string, provider: string, baseUrl: string, mode
         ? '/chat/completions'
         : '/images/generations'
     return {
-      method: 'POST',
+      method: serviceType === 'video' ? 'GET' : 'POST',
       url: joinProviderUrl(baseUrl, '/api/v3', path),
       headers: bearerHeaders(apiKey, true),
-      body: {},
+      body: serviceType === 'video' ? undefined : {},
     }
   }
 
@@ -177,8 +179,20 @@ app.post('/test', async (c) => {
     return badRequest(c, '不支持的 service_type/provider')
   }
 
+  let apiKey = typeof body.api_key === 'string' ? body.api_key.trim() : ''
+  if (!apiKey && body.config_id) {
+    const [existing] = await db.select().from(schema.aiServiceConfigs)
+      .where(eq(schema.aiServiceConfigs.id, Number(body.config_id)))
+    if (!existing) return notFound(c)
+    // 复用服务端密钥时，不允许测试请求把密钥转发到另一个地址。
+    if (existing.baseUrl !== body.base_url || existing.provider !== body.provider || existing.serviceType !== body.service_type) {
+      return badRequest(c, '服务商或地址已变更，请先保存配置，或输入新 Key 后测试')
+    }
+    apiKey = existing.apiKey
+  }
+  const redactKey = (value: string) => apiKey ? value.split(apiKey).join('[redacted]') : value
   const model = Array.isArray(body.model) ? body.model[0] : body.model
-  const probe = buildProbe(body.service_type, body.provider, body.base_url, model, body.api_key)
+  const probe = buildProbe(body.service_type, body.provider, body.base_url, model, apiKey)
   const probeUrl = redactUrl(probe.url)
 
   logTaskProgress('AIConfig', 'probe-start', {
@@ -206,7 +220,7 @@ app.post('/test', async (c) => {
       message: reachable
         ? (resp.ok ? '端点可访问，认证与路径基本正常' : '端点已响应，请根据状态码判断认证或路径是否正确')
         : '端点未按预期响应，请检查 Base URL 和代理前缀',
-      response_preview: text.slice(0, 240),
+      response_preview: redactKey(text).slice(0, 240),
     }
     if (reachable) {
       logTaskSuccess('AIConfig', 'probe-done', {
@@ -226,14 +240,14 @@ app.post('/test', async (c) => {
     logTaskError('AIConfig', 'probe-failed', {
       provider: body.provider,
       url: probeUrl,
-      error: error.message,
+      error: redactKey(error.message || '请求失败'),
     })
     return success(c, {
       ok: false,
       reachable: false,
       method: probe.method,
       url: probeUrl,
-      message: error.message || '请求失败',
+      message: redactKey(error.message || '请求失败'),
       response_preview: '',
     })
   }
@@ -266,7 +280,8 @@ app.put('/:id', async (c) => {
   if ('provider' in body) updates.provider = body.provider
   if ('name' in body) updates.name = body.name
   if ('base_url' in body) updates.baseUrl = body.base_url
-  if ('api_key' in body) updates.apiKey = body.api_key
+  // 编辑留空代表保持已有密钥；只在明确输入新值时替换。
+  if (typeof body.api_key === 'string' && body.api_key.trim()) updates.apiKey = body.api_key.trim()
   if ('model' in body) updates.model = JSON.stringify(body.model)
   if ('priority' in body) updates.priority = body.priority
   if ('is_active' in body) updates.isActive = body.is_active

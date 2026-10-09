@@ -385,6 +385,7 @@
       "created": "Skill を作成しました"
     },
     "cfg": {
+      "keepKeyPlaceholder": "設定済み。空欄で保持、新しいキーを入力すると置換。",
       "editTitle": "サービス設定を編集",
       "addTitle": "{type}サービスを追加",
       "sub": "まずテンプレートを選ぶと、適切な `Base URL` とデフォルトモデルが自動入力されます。",

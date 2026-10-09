@@ -385,6 +385,7 @@
       "created": "Skill이 생성되었습니다"
     },
     "cfg": {
+      "keepKeyPlaceholder": "설정됨. 비워 두면 유지하고 새 키를 입력하면 교체합니다.",
       "editTitle": "서비스 설정 편집",
       "addTitle": "{type} 서비스 추가",
       "sub": "먼저 템플릿을 선택하면 적절한 `Base URL`과 기본 모델이 자동으로 입력됩니다.",

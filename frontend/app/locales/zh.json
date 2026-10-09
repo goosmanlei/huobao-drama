@@ -385,6 +385,7 @@
       "created": "Skill 创建成功"
     },
     "cfg": {
+      "keepKeyPlaceholder": "已配置，留空保留；输入新 Key 可替换",
       "editTitle": "编辑服务配置",
       "addTitle": "添加{type}服务",
       "sub": "推荐先选择模板，系统会自动填入更合理的 `Base URL` 与默认模型。",

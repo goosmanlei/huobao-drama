@@ -332,6 +332,11 @@ async function getModel(fileModel: string | undefined, modelOverride?: string, t
     apiKey: textConfig.apiKey,
     fetch: fetchImpl,
   } as any)
+  // GPT-6.1 Sol 的工具调用仅由官方 Responses API 支持。
+  if (providerName === 'openai' && new URL(resolvedBaseURL).hostname === 'api.openai.com'
+    && modelName === 'gpt-6.1-sol') {
+    return provider.responses(modelName)
+  }
   return provider.chat(modelName)
 }
 
@@ -382,6 +387,13 @@ export const agentRegistry: Record<string, Agent> = Object.fromEntries(
       name: DEFAULT_PROMPTS[type].name,
       instructions: buildInstructions(type),
       model: buildModel(type),
+      defaultOptions: async (context) => {
+        const model = await buildModel(type)(context)
+        // 当前 SDK 尚未识别 GPT-6.1；显式启用推理模型参数处理，避免下发 temperature=0。
+        return model.provider === 'openai.responses' && model.modelId === 'gpt-6.1-sol'
+          ? { providerOptions: { openai: { forceReasoning: true } } }
+          : {}
+      },
       tools: AGENT_TOOLS[type],
       workspace: skillWorkspaces[type],
       skillsFormat: 'markdown',

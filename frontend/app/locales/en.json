@@ -385,6 +385,7 @@
       "created": "Skill created"
     },
     "cfg": {
+      "keepKeyPlaceholder": "Configured. Leave blank to keep; enter a new key to replace.",
       "editTitle": "Edit Service Config",
       "addTitle": "Add {type} Service",
       "sub": "Pick a template first — a sensible `Base URL` and default models will be filled in automatically.",

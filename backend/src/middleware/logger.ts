@@ -32,7 +32,10 @@ export const requestLogger: MiddlewareHandler = async (c, next) => {
   // 打印请求
   const time = formatTime()
   let bodyInfo = ''
-  if (['POST', 'PUT', 'PATCH'].includes(method)) {
+  if (path.startsWith('/api/v1/ai-configs')) {
+    // 配置与连接测试请求包含 API Key，不读取或记录其请求体。
+    bodyInfo = ''
+  } else if (['POST', 'PUT', 'PATCH'].includes(method)) {
     try {
       const clone = c.req.raw.clone()
       const text = await clone.text()
